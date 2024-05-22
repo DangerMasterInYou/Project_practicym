@@ -5,6 +5,7 @@ import '/db/dbMap.dart';
 import '/readJsonFile.dart';
 import '/user/createApplication.dart';
 import '/user/checkApplication.dart';
+import '/user/submit_application_page.dart';
 
 class UserApplicationsPage extends StatefulWidget {
   @override
@@ -39,18 +40,35 @@ class _UserApplicationsPageState extends State<UserApplicationsPage> {
       appBar: AppBar(
         title: Text('Заявки'),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _applicationsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Ошибка загрузки данных'));
-          } else {
-            final applications = snapshot.data ?? [];
-            return _buildApplicationsList(applications);
-          }
-        },
+      body: Column(
+        children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SubmitApplicationPage(),
+                ),
+              );
+            },
+            child: Text('Создать заявку'),
+          ),
+          Expanded(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _applicationsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Ошибка загрузки данных'));
+                } else {
+                  final applications = snapshot.data ?? [];
+                  return _buildApplicationsList(applications);
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -81,14 +99,6 @@ class _ApplicationTile extends StatelessWidget {
       title: Text(name),
       subtitle: Text(statuse),
       onTap: () {
-        // if (statuse == 'Выполнено') {
-        //   Navigator.pushReplacement(
-        //     context,
-        //     MaterialPageRoute(
-        //       builder: (context) => checkApplicationPage(),
-        //     ),
-        //   );
-        // }
         // Обработка нажатия на заявку
       },
     );
