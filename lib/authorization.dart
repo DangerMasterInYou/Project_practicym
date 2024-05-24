@@ -1,112 +1,137 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import '/message.dart';
-import '/db/dbMap.dart';
-import '/readJsonFile.dart';
-import '/home.dart';
+import 'package:http/http.dart' as http;
+import 'user/submit_application_page.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  String username = '';
+  String password = '';
+  String token = ''; // Инициализируем значением по умолчанию
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+
+    final url = Uri.parse('http://dienis72.beget.tech/api/login');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': username,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      token = responseData['access_token']; // Сохраняем токен
+      final userId = responseData['user_id']; // Получаем ID пользователя
+      print(
+          'User ID after login: $userId'); // Выводим ID пользователя в консоль
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubmitApplicationPage(
+            token: token,
+            userId: userId, // Передаем ID пользователя
+            logout: _logout, // Передаем функцию logout
+          ),
+        ),
+      );
+    } else {
+      final errorData = jsonDecode(response.body);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: ${errorData['error']}')),
+      );
+    }
+  }
+
+  void _logout() async {
+    if (token.isEmpty) {
+      // Если токен не определен, выходим
+      return;
+    }
+
+    final url = Uri.parse('http://dienis72.beget.tech/api/logout');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    // Печатаем статус и тело ответа для диагностики
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      if (responseData['message'] == 'Successfully logged out') {
+        // Успешный выход, перенаправляем пользователя на страницу входа
+        token = ''; // Очистка токена при успешном выходе
+        if (mounted) {
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (_) => LoginPage()));
+        }
+      }
+    } else {
+      try {
+        final errorData = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка: ${errorData['message']}')),
+          );
+        }
+      } catch (e) {
+        print('Ошибка при выходе: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка при выходе: $e')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Login'),
+        title: Text('Авторизация'),
+        automaticallyImplyLeading: false, // Убираем стрелку "назад"
       ),
-      body: LoginForm(),
-    );
-  }
-}
-
-class LoginForm extends StatefulWidget {
-  @override
-  _LoginFormState createState() => _LoginFormState();
-}
-
-class _LoginFormState extends State<LoginForm> {
-  final TextEditingController _loginController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  Future<void> _login() async {
-    final String login = _loginController.text;
-    final String password = _passwordController.text;
-
-    // Проверка параметров авторизации (заменить на нужную логику)
-    bool isAuthenticated = false;
-    int userId = -1;
-    int roleId = -1;
-    int categoryId = -1;
-
-    for (final key in users.keys) {
-      final user = users[key];
-      if (user != null &&
-          user['login'] == login &&
-          user['password'] == password) {
-        isAuthenticated = true;
-        userId = int.parse(key);
-        roleId = int.parse(user['roleId'].toString());
-        categoryId = int.parse(user['categoryId'].toString());
-        break;
-      }
-    }
-
-    if (isAuthenticated) {
-      // Создание JSON файла при успешной авторизации
-      final Map<String, dynamic> user = {
-        'user_id': userId,
-        'username': login,
-        'password': password,
-        'role_id': roleId, // Используем roleId из dbMap.dart
-        'category_id': categoryId, // Используем categoryId из dbMap.dart
-      };
-      final String jsonString = jsonEncode(user);
-
-      // Получение директории документов
-      final Directory directory = await getApplicationDocumentsDirectory();
-      final String path = directory.path + '/user_data.json';
-
-      // Запись данных в файл
-      final File file = File(path);
-      await file.writeAsString(jsonString);
-
-      // Переход на следующий экран (HomePage)
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
-    } else {
-      showAlertDialog(context, "Incorrect login or password");
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextFormField(
-            controller: _loginController,
-            decoration: InputDecoration(
-              labelText: 'Login',
-            ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: InputDecoration(labelText: 'Логин'),
+                validator: (value) => value!.isEmpty ? 'Введите логин' : null,
+                onSaved: (value) => username = value!,
+              ),
+              TextFormField(
+                decoration: InputDecoration(labelText: 'Пароль'),
+                obscureText: true,
+                validator: (value) => value!.isEmpty ? 'Введите пароль' : null,
+                onSaved: (value) => password = value!,
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _login,
+                child: Text('Войти'),
+              ),
+            ],
           ),
-          SizedBox(height: 12.0),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'Password',
-            ),
-          ),
-          SizedBox(height: 24.0),
-          ElevatedButton(
-            onPressed: _login,
-            child: Text('Login'),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -59,6 +59,6 @@ class _AppStartState extends State<AppStart> {
 
   @override
   Widget build(BuildContext context) {
-    return _isLoggedIn ? HomePage() : LoginScreen();
+    return _isLoggedIn ? HomePage() : LoginPage();
   }
 }

@@ -43,14 +43,7 @@ class _UserApplicationsPageState extends State<UserApplicationsPage> {
       body: Column(
         children: [
           ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SubmitApplicationPage(),
-                ),
-              );
-            },
+            onPressed: () {},
             child: Text('Создать заявку'),
           ),
           Expanded(

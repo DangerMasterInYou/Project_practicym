@@ -20,11 +20,27 @@ class HomePage extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.logout),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => DeveloperApplicationsPage(),
-                ),
+            onPressed: () async {
+              final Map<String, dynamic> user = {
+                'user_id': null,
+                'username': null,
+                'password': null,
+                'role_id': null, // Используем roleId из dbMap.dart
+                'category_id': null, // Используем categoryId из dbMap.dart
+              };
+              final String jsonString = jsonEncode(user);
+
+              // Получение директории документов
+              final Directory directory =
+                  await getApplicationDocumentsDirectory();
+              final String path = directory.path + '/user_data.json';
+
+              // Запись данных в файл
+              final File file = File(path);
+              await file.writeAsString(jsonString);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => LoginPage()),
               );
             },
           ),
@@ -33,34 +49,6 @@ class HomePage extends StatelessWidget {
       body: Center(
         child: Column(
           children: [
-            Container(
-              child: ElevatedButton(
-                onPressed: () async {
-                  final Map<String, dynamic> user = {
-                    'user_id': null,
-                    'username': null,
-                    'password': null,
-                    'role_id': null, // Используем roleId из dbMap.dart
-                    'category_id': null, // Используем categoryId из dbMap.dart
-                  };
-                  final String jsonString = jsonEncode(user);
-
-                  // Получение директории документов
-                  final Directory directory =
-                      await getApplicationDocumentsDirectory();
-                  final String path = directory.path + '/user_data.json';
-
-                  // Запись данных в файл
-                  final File file = File(path);
-                  await file.writeAsString(jsonString);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                  );
-                },
-                child: Text('Log Out'),
-              ),
-            ),
             Container(
               child: ElevatedButton(
                 onPressed: () async {
@@ -73,7 +61,7 @@ class HomePage extends StatelessWidget {
                   } else if (role_id == 'User') {
                     nextPage = UserApplicationsPage();
                   } else {
-                    nextPage = LoginScreen();
+                    nextPage = LoginPage();
                   }
 
                   Navigator.pushReplacement(

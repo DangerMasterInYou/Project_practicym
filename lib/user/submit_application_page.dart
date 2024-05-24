@@ -1,12 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_try_with_api/authorization.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 
 class SubmitApplicationPage extends StatefulWidget {
+  final String token;
+  final VoidCallback logout; // Принимаем аргумент logout
+  final int userId;
+
+  SubmitApplicationPage(
+      {required this.token,
+      required this.logout,
+      required this.userId}); // Обновим конструктор
+
   @override
   _SubmitApplicationPageState createState() => _SubmitApplicationPageState();
 }
@@ -16,18 +26,27 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
   String nazvanie = '';
   String korpus = '';
   int kabinet = 0;
-  int otpravitel = 0; // в дальнейшем вводить не нужно будет и это будет id текущего пользователя
+  int otpravitel =
+      0; // в дальнейшем вводить не нужно будет и это будет id текущего пользователя
   String opisanie = '';
   String fileName = '';
   int kategoria = 0;
   File? file;
+
+  @override
+  void initState() {
+    super.initState();
+    otpravitel =
+        widget.userId; // Заполняем поле отправителя при инициализации страницы
+  }
 
   Future<void> _submitApplication() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
     try {
-      final url = Uri.parse('http://dienis72.beget.tech/api/submit-application');
+      final url =
+          Uri.parse('http://dienis72.beget.tech/api/submit-application');
 
       final request = http.MultipartRequest('POST', url)
         ..fields['nazvanie'] = nazvanie
@@ -53,6 +72,15 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
+      print('Отправляем запрос с данными:');
+      print('Название: $nazvanie');
+      print('Корпус: $korpus');
+      print('Кабинет: $kabinet');
+      print('Отправитель: $otpravitel');
+      print('Описание: $opisanie');
+      print('Категория: $kategoria');
+      print('Ответ сервера: ${response.body}');
+
       // проверяем, что код состояния находится в диапазоне от 200 до 299
       if (response.statusCode >= 200 && response.statusCode < 300) {
         try {
@@ -76,7 +104,8 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
           } else {
             print('Application submission failed: ${response.body}');
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Не удалось подать заявку: ${response.body}')),
+              SnackBar(
+                  content: Text('Не удалось подать заявку: ${response.body}')),
             );
           }
         } catch (e) {
@@ -86,9 +115,12 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
           );
         }
       } else {
-        print('API call failed: ${response.statusCode} ${response.reasonPhrase}');
+        print(
+            'API call failed: ${response.statusCode} ${response.reasonPhrase}');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при отправке заявки: ${response.statusCode} ${response.reasonPhrase}')),
+          SnackBar(
+              content: Text(
+                  'Ошибка при отправке заявки: ${response.statusCode} ${response.reasonPhrase}')),
         );
       }
     } catch (e) {
@@ -100,7 +132,8 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
   }
 
   Future<void> _pickFile() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
@@ -115,6 +148,15 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Отправка заявки'),
+        automaticallyImplyLeading: false, // Убираем стрелку "назад"
+        actions: <Widget>[
+          IconButton(
+            onPressed: () {
+              widget.logout(); // Вызываем функцию logout
+            },
+            icon: Icon(Icons.exit_to_app), // Иконка выхода
+          ),
+        ],
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -125,44 +167,53 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
               children: [
                 TextFormField(
                   decoration: InputDecoration(labelText: 'Название'),
-                  validator: (value) => value!.isEmpty ? 'Введите название' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Введите название' : null,
                   onSaved: (value) => nazvanie = value!,
                 ),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'Корпус'),
-                  validator: (value) => value!.isEmpty ? 'Введите корпус' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Введите корпус' : null,
                   onSaved: (value) => korpus = value!,
                 ),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'Кабинет'),
                   keyboardType: TextInputType.number,
-                  validator: (value) => value!.isEmpty ? 'Введите кабинет' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Введите кабинет' : null,
                   onSaved: (value) => kabinet = int.parse(value!),
                 ),
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Отправитель'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => value!.isEmpty ? 'Введите отправителя' : null,
-                  onSaved: (value) => otpravitel = int.parse(value!),
-                ),
-                TextFormField(
                   decoration: InputDecoration(labelText: 'Описание'),
-                  validator: (value) => value!.isEmpty ? 'Введите описание' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Введите описание' : null,
                   onSaved: (value) => opisanie = value!,
                 ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Категория'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) => value!.isEmpty ? 'Введите категорию' : null,
-                  onSaved: (value) => kategoria = int.parse(value!),
+                DropdownButtonFormField<int>(
+                  decoration: const InputDecoration(labelText: 'Категория'),
+                  value: kategoria != 0 ? kategoria : null,
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('Плотник')),
+                    DropdownMenuItem(value: 2, child: Text('Слесарь')),
+                    DropdownMenuItem(value: 3, child: Text('Электрик')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      kategoria = value!;
+                    });
+                  },
+                  onSaved: (value) => kategoria = value!,
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _pickFile,
                   child: Text('Прикрепить файл'),
                 ),
                 SizedBox(height: 8),
-                file != null ? Text('Файл выбран: $fileName') : Text('Файл не выбран'),
+                file != null
+                    ? Text('Файл выбран: $fileName')
+                    : Text('Файл не выбран'),
                 SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _submitApplication,
@@ -176,4 +227,3 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
     );
   }
 }
-
