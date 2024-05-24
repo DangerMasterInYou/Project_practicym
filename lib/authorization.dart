@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'user/submit_application_page.dart';
+import 'package:path_provider/path_provider.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -13,6 +15,34 @@ class _LoginPageState extends State<LoginPage> {
   String username = '';
   String password = '';
   String token = ''; // Инициализируем значением по умолчанию
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserData();
+  }
+
+  Future<void> _checkUserData() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/api_user.json');
+
+    if (await file.exists()) {
+      final userData = jsonDecode(await file.readAsString());
+      token = userData['token'];
+      final userId = userData['userId'];
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubmitApplicationPage(
+            token: token,
+            userId: userId,
+            logout: _logout,
+          ),
+        ),
+      );
+    }
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -34,7 +64,11 @@ class _LoginPageState extends State<LoginPage> {
       final userId = responseData['user_id']; // Получаем ID пользователя
       print(
           'User ID after login: $userId'); // Выводим ID пользователя в консоль
-      Navigator.push(
+
+      // Сохраняем токен и userId в файл
+      await _saveUserData(token, userId);
+
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => SubmitApplicationPage(
@@ -52,52 +86,28 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _logout() async {
+  Future<void> _saveUserData(String token, int userId) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/api_user.json');
+    final userData = jsonEncode({'token': token, 'userId': userId});
+    await file.writeAsString(userData);
+  }
+
+  Future<void> _deleteUserData() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/api_user.json');
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
+  Future<void> _logout() async {
     if (token.isEmpty) {
       // Если токен не определен, выходим
       return;
     }
 
-    final url = Uri.parse('http://dienis72.beget.tech/api/logout');
-    final response = await http.post(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
-
-    // Печатаем статус и тело ответа для диагностики
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      if (responseData['message'] == 'Successfully logged out') {
-        // Успешный выход, перенаправляем пользователя на страницу входа
-        token = ''; // Очистка токена при успешном выходе
-        if (mounted) {
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => LoginPage()));
-        }
-      }
-    } else {
-      try {
-        final errorData = jsonDecode(response.body);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка: ${errorData['message']}')),
-          );
-        }
-      } catch (e) {
-        print('Ошибка при выходе: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка при выходе: $e')),
-          );
-        }
-      }
-    }
+    await _deleteUserData();
   }
 
   @override

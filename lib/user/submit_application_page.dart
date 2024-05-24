@@ -50,7 +50,7 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
 
       final request = http.MultipartRequest('POST', url)
         ..fields['nazvanie'] = nazvanie
-        ..fields['korpys'] = korpus
+        ..fields['korpus'] = korpus
         ..fields['kabinet'] = kabinet.toString()
         ..fields['otpravitel'] = otpravitel.toString()
         ..fields['opisanie'] = opisanie
@@ -96,7 +96,7 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
             nazvanie = '';
             korpus = '';
             kabinet = 0;
-            otpravitel = 0;
+            otpravitel = widget.userId; // Сохраняем ID пользователя
             opisanie = '';
             kategoria = 0;
             file = null;
@@ -145,81 +145,93 @@ class _SubmitApplicationPageState extends State<SubmitApplicationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Отправка заявки'),
-        automaticallyImplyLeading: false, // Убираем стрелку "назад"
-        actions: <Widget>[
-          IconButton(
-            onPressed: () {
-              widget.logout(); // Вызываем функцию logout
-            },
-            icon: Icon(Icons.exit_to_app), // Иконка выхода
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Название'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Введите название' : null,
-                  onSaved: (value) => nazvanie = value!,
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Корпус'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Введите корпус' : null,
-                  onSaved: (value) => korpus = value!,
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Кабинет'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) =>
-                      value!.isEmpty ? 'Введите кабинет' : null,
-                  onSaved: (value) => kabinet = int.parse(value!),
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Описание'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Введите описание' : null,
-                  onSaved: (value) => opisanie = value!,
-                ),
-                DropdownButtonFormField<int>(
-                  decoration: const InputDecoration(labelText: 'Категория'),
-                  value: kategoria != 0 ? kategoria : null,
-                  items: const [
-                    DropdownMenuItem(value: 1, child: Text('Плотник')),
-                    DropdownMenuItem(value: 2, child: Text('Слесарь')),
-                    DropdownMenuItem(value: 3, child: Text('Электрик')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      kategoria = value!;
-                    });
-                  },
-                  onSaved: (value) => kategoria = value!,
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _pickFile,
-                  child: Text('Прикрепить файл'),
-                ),
-                SizedBox(height: 8),
-                file != null
-                    ? Text('Файл выбран: $fileName')
-                    : Text('Файл не выбран'),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _submitApplication,
-                  child: Text('Отправить заявку'),
-                ),
-              ],
+    return WillPopScope(
+      onWillPop: () async {
+        // Здесь можно обработать нажатие кнопки "назад"
+        return false; // Возвращаем false, чтобы предотвратить возврат назад
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Отправка заявки'),
+          automaticallyImplyLeading: false, // Убираем стрелку "назад"
+          actions: <Widget>[
+            IconButton(
+              onPressed: () async {
+                widget.logout(); // Ждем завершения logout
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginPage(),
+                  ),
+                );
+              },
+              icon: Icon(Icons.exit_to_app), // Иконка выхода
+            ),
+          ],
+        ),
+        body: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Название'),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Введите название' : null,
+                    onSaved: (value) => nazvanie = value!,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Корпус'),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Введите корпус' : null,
+                    onSaved: (value) => korpus = value!,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Кабинет'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Введите кабинет' : null,
+                    onSaved: (value) => kabinet = int.parse(value!),
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Описание'),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Введите описание' : null,
+                    onSaved: (value) => opisanie = value!,
+                  ),
+                  DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(labelText: 'Категория'),
+                    value: kategoria != 0 ? kategoria : null,
+                    items: const [
+                      DropdownMenuItem(value: 1, child: Text('Плотник')),
+                      DropdownMenuItem(value: 2, child: Text('Слесарь')),
+                      DropdownMenuItem(value: 3, child: Text('Электрик')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        kategoria = value!;
+                      });
+                    },
+                    onSaved: (value) => kategoria = value!,
+                  ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _pickFile,
+                    child: Text('Прикрепить файл'),
+                  ),
+                  SizedBox(height: 8),
+                  file != null
+                      ? Text('Файл выбран: $fileName')
+                      : Text('Файл не выбран'),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _submitApplication,
+                    child: Text('Отправить заявку'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
